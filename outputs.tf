@@ -50,17 +50,17 @@ output "alb_ingress_target_group_arn_suffix" {
 
 output "container_definition" {
   description = "All outputs from `module.container_definition`"
-  value       = module.container_definition
+  value       = module.container_definition.json_map_encoded_list
 }
 
 output "container_definition_json" {
   description = "JSON encoded list of container definitions for use with other terraform resources such as aws_ecs_task_definition"
-  value       = module.container_definition.json
+  value       = module.container_definition.json_map_object
 }
 
 output "container_definition_json_map" {
   description = "JSON encoded container definitions for use with other terraform resources such as aws_ecs_task_definition"
-  value       = module.container_definition.json_map
+  value       = module.container_definition.json_map_encoded
 }
 
 output "ecs_alb_service_task" {
