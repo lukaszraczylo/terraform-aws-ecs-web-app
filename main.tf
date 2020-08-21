@@ -8,16 +8,6 @@ module "default_label" {
   tags       = var.tags
 }
 
-module "ecr" {
-  source              = "git::https://github.com/cloudposse/terraform-aws-ecr.git?ref=tags/0.18.0"
-  enabled             = var.codepipeline_enabled
-  name                = var.name
-  namespace           = var.namespace
-  stage               = var.stage
-  attributes          = compact(concat(var.attributes, ["ecr"]))
-  scan_images_on_push = var.ecr_scan_images_on_push
-}
-
 resource "aws_cloudwatch_log_group" "app" {
   count = var.cloudwatch_log_group_enabled ? 1 : 0
 
@@ -27,7 +17,7 @@ resource "aws_cloudwatch_log_group" "app" {
 }
 
 module "alb_ingress" {
-  source                       = "git::https://github.com/cloudposse/terraform-aws-alb-ingress.git?ref=tags/0.12.0"
+  source                       = "git::https://github.com/cloudposse/terraform-aws-alb-ingress.git?ref=tags/0.13.2"
   name                         = var.name
   namespace                    = var.namespace
   stage                        = var.stage
@@ -64,9 +54,9 @@ module "alb_ingress" {
 }
 
 module "container_definition" {
-  source                       = "git::https://github.com/cloudposse/terraform-aws-ecs-container-definition.git?ref=tags/0.37.0"
+  source                       = "git::https://github.com/cloudposse/terraform-aws-ecs-container-definition.git?ref=tags/0.41.0"
   container_name               = module.default_label.id
-  container_image              = var.use_ecr_image ? module.ecr.repository_url : var.container_image
+  container_image              = var.container_image
   container_memory             = var.container_memory
   container_memory_reservation = var.container_memory_reservation
   container_cpu                = var.container_cpu
@@ -123,13 +113,13 @@ locals {
   ]
 
   # override container_definition if var.container_definition is supplied
-  main_container_definition = coalesce(var.container_definition, module.container_definition.json_map)
+  main_container_definition = coalesce(var.container_definition, module.container_definition.json_map_encoded)
   # combine all container definitions
   all_container_definitions = "[${join(",", concat(local.init_container_definitions, [local.main_container_definition]))}]"
 }
 
 module "ecs_alb_service_task" {
-  source                            = "git::https://github.com/cloudposse/terraform-aws-ecs-alb-service-task.git?ref=tags/0.35.0"
+  source                            = "git::https://github.com/cloudposse/terraform-aws-ecs-alb-service-task.git?ref=tags/0.39.0"
   name                              = var.name
   namespace                         = var.namespace
   stage                             = var.stage
@@ -160,54 +150,9 @@ module "ecs_alb_service_task" {
   ecs_load_balancers                = local.load_balancers
 }
 
-module "ecs_codepipeline" {
-  enabled               = var.codepipeline_enabled
-  source                = "git::https://github.com/cloudposse/terraform-aws-ecs-codepipeline.git?ref=tags/0.13.0"
-  name                  = var.name
-  namespace             = var.namespace
-  stage                 = var.stage
-  attributes            = var.attributes
-  region                = var.region
-  github_oauth_token    = var.github_oauth_token
-  github_anonymous      = var.github_webhooks_anonymous
-  github_webhooks_token = var.github_webhooks_token
-  github_webhook_events = var.github_webhook_events
-  repo_owner            = var.repo_owner
-  repo_name             = var.repo_name
-  branch                = var.branch
-  badge_enabled         = var.badge_enabled
-  build_image           = var.build_image
-  build_compute_type    = var.codepipeline_build_compute_type
-  build_timeout         = var.build_timeout
-  buildspec             = var.buildspec
-  image_repo_name       = module.ecr.repository_name
-  service_name          = module.ecs_alb_service_task.service_name
-  ecs_cluster_name      = var.ecs_cluster_name
-  privileged_mode       = true
-  poll_source_changes   = var.poll_source_changes
-
-  webhook_enabled             = var.webhook_enabled
-  webhook_target_action       = var.webhook_target_action
-  webhook_authentication      = var.webhook_authentication
-  webhook_filter_json_path    = var.webhook_filter_json_path
-  webhook_filter_match_equals = var.webhook_filter_match_equals
-
-  s3_bucket_force_destroy = var.codepipeline_s3_bucket_force_destroy
-
-  environment_variables = concat(
-    var.build_environment_variables,
-    [
-      {
-        name  = "CONTAINER_NAME"
-        value = module.default_label.id
-      }
-    ]
-  )
-}
-
 module "ecs_cloudwatch_autoscaling" {
   enabled               = var.autoscaling_enabled
-  source                = "git::https://github.com/cloudposse/terraform-aws-ecs-cloudwatch-autoscaling.git?ref=tags/0.2.0"
+  source                = "git::https://github.com/cloudposse/terraform-aws-ecs-cloudwatch-autoscaling.git?ref=tags/0.4.1"
   name                  = var.name
   namespace             = var.namespace
   stage                 = var.stage
@@ -230,7 +175,7 @@ locals {
 }
 
 module "ecs_cloudwatch_sns_alarms" {
-  source  = "git::https://github.com/cloudposse/terraform-aws-ecs-cloudwatch-sns-alarms.git?ref=tags/0.5.0"
+  source  = "git::https://github.com/cloudposse/terraform-aws-ecs-cloudwatch-sns-alarms.git?ref=tags/0.7.1"
   enabled = var.ecs_alarms_enabled
 
   name       = var.name
@@ -296,7 +241,7 @@ module "ecs_cloudwatch_sns_alarms" {
 }
 
 module "alb_target_group_cloudwatch_sns_alarms" {
-  source                         = "git::https://github.com/cloudposse/terraform-aws-alb-target-group-cloudwatch-sns-alarms.git?ref=tags/0.8.0"
+  source                         = "git::https://github.com/cloudposse/terraform-aws-alb-target-group-cloudwatch-sns-alarms.git?ref=tags/0.11.2"
   enabled                        = var.alb_target_group_alarms_enabled
   name                           = var.name
   namespace                      = var.namespace
