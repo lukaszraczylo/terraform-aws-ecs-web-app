@@ -1,33 +1,3 @@
-output "ecr" {
-  value       = module.ecr
-  description = "All outputs from `module.ecr`"
-}
-
-output "ecr_registry_id" {
-  value       = module.ecr.registry_id
-  description = "Registry ID"
-}
-
-output "ecr_registry_url" {
-  value       = module.ecr.repository_url
-  description = "Repository URL"
-}
-
-output "ecr_repository_url" {
-  value       = module.ecr.repository_url
-  description = "Repository URL"
-}
-
-output "ecr_repository_name" {
-  value       = module.ecr.repository_name
-  description = "Registry name"
-}
-
-output "ecr_repository_arn" {
-  value       = module.ecr.repository_arn
-  description = "ARN of ECR repository"
-}
-
 output "alb_ingress" {
   description = "All outputs from `module.alb_ingress`"
   value       = module.alb_ingress
@@ -144,68 +114,6 @@ output "cloudwatch_log_group_arn" {
 output "cloudwatch_log_group_name" {
   description = "Cloudwatch log group name"
   value       = join("", aws_cloudwatch_log_group.app.*.name)
-}
-
-output "codebuild" {
-  description = "All outputs from `module.ecs_codepipeline`"
-  value       = module.ecs_codepipeline
-  sensitive   = true
-}
-
-output "codebuild_project_name" {
-  description = "CodeBuild project name"
-  value       = module.ecs_codepipeline.codebuild_project_name
-}
-
-output "codebuild_project_id" {
-  description = "CodeBuild project ID"
-  value       = module.ecs_codepipeline.codebuild_project_id
-}
-
-output "codebuild_role_id" {
-  description = "CodeBuild IAM Role ID"
-  value       = module.ecs_codepipeline.codebuild_role_id
-}
-
-output "codebuild_role_arn" {
-  description = "CodeBuild IAM Role ARN"
-  value       = module.ecs_codepipeline.codebuild_role_arn
-}
-
-output "codebuild_cache_bucket_name" {
-  description = "CodeBuild cache S3 bucket name"
-  value       = module.ecs_codepipeline.codebuild_cache_bucket_name
-}
-
-output "codebuild_cache_bucket_arn" {
-  description = "CodeBuild cache S3 bucket ARN"
-  value       = module.ecs_codepipeline.codebuild_cache_bucket_arn
-}
-
-output "codebuild_badge_url" {
-  description = "The URL of the build badge when badge_enabled is enabled"
-  value       = module.ecs_codepipeline.codebuild_badge_url
-}
-
-output "codepipeline_id" {
-  description = "CodePipeline ID"
-  value       = module.ecs_codepipeline.codepipeline_id
-}
-
-output "codepipeline_arn" {
-  description = "CodePipeline ARN"
-  value       = module.ecs_codepipeline.codepipeline_arn
-}
-
-output "codepipeline_webhook_id" {
-  description = "The CodePipeline webhook's ID"
-  value       = module.ecs_codepipeline.webhook_id
-}
-
-output "codepipeline_webhook_url" {
-  description = "The CodePipeline webhook's URL. POST events to this endpoint to trigger the target"
-  value       = module.ecs_codepipeline.webhook_url
-  sensitive   = true
 }
 
 output "ecs_cloudwatch_autoscaling" {
