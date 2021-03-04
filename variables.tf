@@ -1,41 +1,7 @@
 variable "region" {
   type        = string
   description = "AWS Region for S3 bucket"
-}
-
-variable "namespace" {
-  type        = string
-  description = "Namespace (e.g. `eg` or `cp`)"
-  default     = ""
-}
-
-variable "stage" {
-  type        = string
-  description = "Stage (e.g. `prod`, `dev`, `staging`)"
-  default     = ""
-}
-
-variable "name" {
-  type        = string
-  description = "Name of the application"
-}
-
-variable "delimiter" {
-  type        = string
-  default     = "-"
-  description = "Delimiter between `namespace`, `stage`, `name` and `attributes`"
-}
-
-variable "attributes" {
-  type        = list(string)
-  description = "Additional attributes (_e.g._ \"1\")"
-  default     = []
-}
-
-variable "tags" {
-  type        = map(string)
-  description = "Additional tags (_e.g._ { BusinessUnit : ABC })"
-  default     = {}
+  default     = null
 }
 
 variable "codepipeline_enabled" {
@@ -233,7 +199,7 @@ variable "mount_points" {
   default     = []
 }
 
-variable "environment" {
+variable "container_environment" {
   type = list(object({
     name  = string
     value = string
@@ -242,7 +208,7 @@ variable "environment" {
   default     = null
 }
 
-variable "map_environment" {
+variable "map_container_environment" {
   type        = map(string)
   description = "The environment variables to pass to the container. This is a map of string: {key: value}. `environment` overrides `map_environment`"
   default     = null
@@ -389,6 +355,12 @@ variable "alb_ingress_enable_default_target_group" {
   default     = true
 }
 
+variable "alb_ingress_target_group_arn" {
+  type        = string
+  description = "Existing ALB target group ARN. If provided, set `alb_ingress_enable_default_target_group` to `false` to disable creation of the default target group"
+  default     = ""
+}
+
 variable "alb_ingress_healthcheck_path" {
   type        = string
   description = "The path of the healthcheck which the ALB checks"
@@ -451,12 +423,19 @@ variable "vpc_id" {
 variable "aws_logs_region" {
   type        = string
   description = "The region for the AWS Cloudwatch Logs group"
+  default     = null
+}
+
+variable "aws_logs_prefix" {
+  type        = string
+  description = "Custom AWS Logs prefix. If empty name from label module will be used"
+  default     = ""
 }
 
 variable "log_retention_in_days" {
   type        = number
   description = "The number of days to retain logs for the log group"
-  default     = null
+  default     = 90
 }
 
 variable "log_driver" {
@@ -485,6 +464,7 @@ variable "ecs_cluster_arn" {
 variable "ecs_cluster_name" {
   type        = string
   description = "The ECS Cluster Name to use in ECS Code Pipeline Deployment step"
+  default     = null
 }
 
 variable "ecs_alarms_cpu_utilization_high_threshold" {
@@ -628,12 +608,6 @@ variable "github_webhooks_token" {
   type        = string
   description = "GitHub OAuth Token with permissions to create webhooks. If not provided, can be sourced from the `GITHUB_TOKEN` environment variable"
   default     = ""
-}
-
-variable "github_webhooks_anonymous" {
-  type        = bool
-  default     = false
-  description = "Github Anonymous API (if `true`, token must not be set as GITHUB_TOKEN or `github_webhooks_token`)"
 }
 
 variable "github_webhook_events" {
@@ -827,6 +801,12 @@ variable "authentication_cognito_user_pool_domain" {
   default     = ""
 }
 
+variable "authentication_cognito_scope" {
+  type        = list(string)
+  description = "Cognito scope"
+  default     = []
+}
+
 variable "authentication_oidc_client_id" {
   type        = string
   description = "OIDC Client ID"
@@ -861,6 +841,18 @@ variable "authentication_oidc_user_info_endpoint" {
   type        = string
   description = "OIDC User Info Endpoint"
   default     = ""
+}
+
+variable "authentication_oidc_scope" {
+  type        = list(string)
+  description = "OIDC scope"
+  default     = []
+}
+
+variable "codepipeline_build_cache_bucket_suffix_enabled" {
+  type        = bool
+  description = "The codebuild cache bucket generates a random 13 character string to generate a unique bucket name. If set to false it uses terraform-null-label's id value. It only works when cache_type is 'S3'"
+  default     = true
 }
 
 variable "codepipeline_build_compute_type" {
@@ -906,4 +898,16 @@ variable "nlb_container_name" {
   type        = string
   description = "The name of the container to associate with the NLB. If not provided, the generated container will be used"
   default     = null
+}
+
+variable "deployment_controller_type" {
+  type        = string
+  description = "Type of deployment controller. Valid values are CODE_DEPLOY and ECS"
+  default     = "ECS"
+}
+
+variable "ecr_image_tag_mutability" {
+  type        = string
+  default     = "IMMUTABLE"
+  description = "The tag mutability setting for the ecr repository. Must be one of: `MUTABLE` or `IMMUTABLE`"
 }

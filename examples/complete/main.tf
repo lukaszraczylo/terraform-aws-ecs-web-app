@@ -2,35 +2,19 @@ provider "aws" {
   region = var.region
 }
 
-module "label" {
-  source     = "git::https://github.com/cloudposse/terraform-null-label.git?ref=tags/0.17.0"
-  namespace  = var.namespace
-  name       = var.name
-  stage      = var.stage
-  delimiter  = var.delimiter
-  attributes = var.attributes
-  tags       = var.tags
-}
-
 module "vpc" {
-  source     = "git::https://github.com/cloudposse/terraform-aws-vpc.git?ref=tags/0.14.0"
-  namespace  = var.namespace
-  stage      = var.stage
-  name       = var.name
-  delimiter  = var.delimiter
-  attributes = var.attributes
+  source     = "cloudposse/vpc/aws"
+  version    = "0.18.2"
   cidr_block = var.vpc_cidr_block
-  tags       = var.tags
+
+  context = module.this.context
+
 }
 
 module "subnets" {
-  source                   = "git::https://github.com/cloudposse/terraform-aws-dynamic-subnets.git?ref=tags/0.27.0"
+  source                   = "cloudposse/dynamic-subnets/aws"
+  version                  = "0.34.0"
   availability_zones       = var.availability_zones
-  namespace                = var.namespace
-  stage                    = var.stage
-  name                     = var.name
-  attributes               = var.attributes
-  delimiter                = var.delimiter
   vpc_id                   = module.vpc.vpc_id
   igw_id                   = module.vpc.igw_id
   cidr_block               = module.vpc.vpc_cidr_block
@@ -38,16 +22,13 @@ module "subnets" {
   nat_instance_enabled     = false
   aws_route_create_timeout = "5m"
   aws_route_delete_timeout = "10m"
-  tags                     = var.tags
+
+  context = module.this.context
 }
 
 module "alb" {
-  source                                  = "git::https://github.com/cloudposse/terraform-aws-alb.git?ref=tags/0.11.0"
-  namespace                               = var.namespace
-  stage                                   = var.stage
-  name                                    = var.name
-  attributes                              = var.attributes
-  delimiter                               = var.delimiter
+  source                                  = "cloudposse/alb/aws"
+  version                                 = "0.27.0"
   vpc_id                                  = module.vpc.vpc_id
   security_group_ids                      = [module.vpc.vpc_default_security_group_id]
   subnet_ids                              = module.subnets.public_subnet_ids
@@ -55,37 +36,36 @@ module "alb" {
   http_enabled                            = true
   access_logs_enabled                     = true
   alb_access_logs_s3_bucket_force_destroy = true
-  access_logs_region                      = var.region
   cross_zone_load_balancing_enabled       = true
   http2_enabled                           = true
   deletion_protection_enabled             = false
-  tags                                    = var.tags
+
+  context = module.this.context
 }
 
 resource "aws_ecs_cluster" "default" {
-  name = module.label.id
-  tags = module.label.tags
+  name = module.this.id
+  tags = module.this.tags
+  setting {
+    name  = "containerInsights"
+    value = "enabled"
+  }
 }
 
 resource "aws_sns_topic" "sns_topic" {
-  name         = module.label.id
-  display_name = "Test terraform-aws-ecs-web-app"
-  tags         = module.label.tags
+  name              = module.this.id
+  display_name      = "Test terraform-aws-ecs-web-app"
+  tags              = module.this.tags
+  kms_master_key_id = "alias/aws/sns"
 }
 
 module "ecs_web_app" {
-  source     = "../.."
-  namespace  = var.namespace
-  stage      = var.stage
-  name       = var.name
-  attributes = var.attributes
-  delimiter  = var.delimiter
-  tags       = var.tags
+  source = "../.."
 
   region = var.region
   vpc_id = module.vpc.vpc_id
 
-  // Container
+  # Container
   container_image              = var.container_image
   container_cpu                = var.container_cpu
   container_memory             = var.container_memory
@@ -95,7 +75,7 @@ module "ecs_web_app" {
   aws_logs_region              = var.region
   healthcheck                  = var.healthcheck
 
-  // Authentication
+  # Authentication
   authentication_type                           = var.authentication_type
   alb_ingress_listener_unauthenticated_priority = var.alb_ingress_listener_unauthenticated_priority
   alb_ingress_listener_authenticated_priority   = var.alb_ingress_listener_authenticated_priority
@@ -113,7 +93,7 @@ module "ecs_web_app" {
   authentication_oidc_token_endpoint            = var.authentication_oidc_token_endpoint
   authentication_oidc_user_info_endpoint        = var.authentication_oidc_user_info_endpoint
 
-  // ECS
+  # ECS
   ecs_private_subnet_ids            = module.subnets.private_subnet_ids
   ecs_cluster_arn                   = aws_ecs_cluster.default.arn
   ecs_cluster_name                  = aws_ecs_cluster.default.name
@@ -123,18 +103,17 @@ module "ecs_web_app" {
   launch_type                       = var.launch_type
   container_port                    = var.container_port
 
-  // ALB
+  # ALB
   alb_arn_suffix                                  = module.alb.alb_arn_suffix
   alb_security_group                              = module.alb.security_group_id
   alb_ingress_unauthenticated_listener_arns       = [module.alb.http_listener_arn]
   alb_ingress_unauthenticated_listener_arns_count = 1
   alb_ingress_healthcheck_path                    = var.alb_ingress_healthcheck_path
 
-  // CodePipeline
+  # CodePipeline
   codepipeline_enabled                 = var.codepipeline_enabled
   badge_enabled                        = var.codepipeline_badge_enabled
   github_oauth_token                   = var.codepipeline_github_oauth_token
-  github_webhooks_anonymous            = var.codepipeline_github_webhooks_anonymous
   github_webhooks_token                = var.codepipeline_github_webhooks_token
   github_webhook_events                = var.codepipeline_github_webhook_events
   repo_owner                           = var.codepipeline_repo_owner
@@ -150,10 +129,10 @@ module "ecs_web_app" {
   webhook_filter_json_path             = var.webhook_filter_json_path
   webhook_filter_match_equals          = var.webhook_filter_match_equals
   codepipeline_s3_bucket_force_destroy = var.codepipeline_s3_bucket_force_destroy
-  environment                          = var.environment
+  container_environment                = var.container_environment
   secrets                              = var.secrets
 
-  // Autoscaling
+  # Autoscaling
   autoscaling_enabled               = var.autoscaling_enabled
   autoscaling_dimension             = var.autoscaling_dimension
   autoscaling_min_capacity          = var.autoscaling_min_capacity
@@ -163,7 +142,7 @@ module "ecs_web_app" {
   autoscaling_scale_down_adjustment = var.autoscaling_scale_down_adjustment
   autoscaling_scale_down_cooldown   = var.autoscaling_scale_down_cooldown
 
-  // ECS alarms
+  # ECS alarms
   ecs_alarms_enabled                                    = var.ecs_alarms_enabled
   ecs_alarms_cpu_utilization_high_threshold             = var.ecs_alarms_cpu_utilization_high_threshold
   ecs_alarms_cpu_utilization_high_evaluation_periods    = var.ecs_alarms_cpu_utilization_high_evaluation_periods
@@ -186,7 +165,7 @@ module "ecs_web_app" {
   ecs_alarms_memory_utilization_low_alarm_actions       = [aws_sns_topic.sns_topic.arn]
   ecs_alarms_memory_utilization_low_ok_actions          = [aws_sns_topic.sns_topic.arn]
 
-  // ALB and Target Group alarms
+  # ALB and Target Group alarms
   alb_target_group_alarms_enabled                   = var.alb_target_group_alarms_enabled
   alb_target_group_alarms_evaluation_periods        = var.alb_target_group_alarms_evaluation_periods
   alb_target_group_alarms_period                    = var.alb_target_group_alarms_period
@@ -197,4 +176,6 @@ module "ecs_web_app" {
   alb_target_group_alarms_alarm_actions             = [aws_sns_topic.sns_topic.arn]
   alb_target_group_alarms_ok_actions                = [aws_sns_topic.sns_topic.arn]
   alb_target_group_alarms_insufficient_data_actions = [aws_sns_topic.sns_topic.arn]
+
+  context = module.this.context
 }

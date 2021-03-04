@@ -3,11 +3,12 @@ provider "aws" {
 }
 
 module "vpc" {
-  source     = "git::https://github.com/cloudposse/terraform-aws-vpc.git?ref=tags/0.14.0"
-  namespace  = var.namespace
-  stage      = var.stage
-  name       = var.name
+  source  = "cloudposse/vpc/aws"
+  version = "0.18.0"
+
   cidr_block = "172.16.0.0/16"
+
+  context = module.this.context
 }
 
 data "aws_availability_zones" "available" {
@@ -18,12 +19,9 @@ locals {
 }
 
 module "subnets" {
-  source                   = "git::https://github.com/cloudposse/terraform-aws-dynamic-subnets.git?ref=tags/0.27.0"
+  source                   = "cloudposse/dynamic-subnets/aws"
+  version                  = "0.32.0"
   availability_zones       = local.availability_zones
-  namespace                = var.namespace
-  stage                    = var.stage
-  name                     = var.name
-  region                   = var.region
   vpc_id                   = module.vpc.vpc_id
   igw_id                   = module.vpc.igw_id
   cidr_block               = module.vpc.vpc_cidr_block
@@ -31,58 +29,51 @@ module "subnets" {
   nat_instance_enabled     = false
   aws_route_create_timeout = "5m"
   aws_route_delete_timeout = "10m"
+
+  context = module.this.context
 }
 
 module "alb" {
-  source                    = "git::https://github.com/cloudposse/terraform-aws-alb.git?ref=tags/0.11.0"
-  name                      = var.name
-  namespace                 = var.namespace
-  stage                     = var.stage
-  attributes                = compact(concat(var.attributes, ["alb"]))
+  source                    = "cloudposse/alb/aws"
+  version                   = "0.23.0"
   vpc_id                    = module.vpc.vpc_id
   ip_address_type           = "ipv4"
   subnet_ids                = module.subnets.public_subnet_ids
   security_group_ids        = [module.vpc.vpc_default_security_group_id]
-  access_logs_region        = var.region
   https_enabled             = true
   http_ingress_cidr_blocks  = ["0.0.0.0/0"]
   https_ingress_cidr_blocks = ["0.0.0.0/0"]
   certificate_arn           = var.certificate_arn
   health_check_interval     = 60
-}
 
-module "label" {
-  source     = "git::https://github.com/cloudposse/terraform-null-label.git?ref=tags/0.17.0"
-  name       = var.name
-  namespace  = var.namespace
-  stage      = var.stage
-  tags       = var.tags
-  attributes = var.attributes
-  delimiter  = var.delimiter
+  context = module.this.context
 }
 
 # ECS Cluster (needed even if using FARGATE launch type)
 resource "aws_ecs_cluster" "default" {
-  name = module.label.id
+  name = module.this.id
+  tags = module.this.tags
+  setting {
+    name  = "containerInsights"
+    value = "enabled"
+  }
 }
 
 resource "aws_cloudwatch_log_group" "app" {
-  name = module.label.id
-  tags = module.label.tags
+  #bridgecrew:skip=BC_AWS_LOGGING_21:Skipping `Ensure CloudWatch logs are encrypted at rest using KMS CMKs` in example/test modules
+  name              = module.this.id
+  tags              = module.this.tags
+  retention_in_days = 90
 }
 
 module "web_app" {
-  source     = "../../"
-  namespace  = var.namespace
-  stage      = var.stage
-  name       = var.name
-  attributes = compact(concat(var.attributes, ["app"]))
+  source = "../../"
 
   region      = var.region
   launch_type = "FARGATE"
   vpc_id      = module.vpc.vpc_id
 
-  environment = [
+  container_environment = [
     {
       name  = "LAUNCH_TYPE"
       value = "FARGATE"
@@ -99,16 +90,6 @@ module "web_app" {
   container_memory = 512
   container_port   = 80
   build_timeout    = 5
-
-  log_configuration = {
-    logDriver = "awslogs"
-    options = {
-      "awslogs-region"        = var.region
-      "awslogs-group"         = aws_cloudwatch_log_group.app.name
-      "awslogs-stream-prefix" = var.name
-    }
-    secretOptions = null
-  }
 
   codepipeline_enabled = false
   webhook_enabled      = false
@@ -162,4 +143,6 @@ module "web_app" {
   authentication_oidc_authorization_endpoint = "https://accounts.google.com/o/oauth2/v2/auth"
   authentication_oidc_token_endpoint         = "https://oauth2.googleapis.com/token"
   authentication_oidc_user_info_endpoint     = "https://openidconnect.googleapis.com/v1/userinfo"
+
+  context = module.this.context
 }

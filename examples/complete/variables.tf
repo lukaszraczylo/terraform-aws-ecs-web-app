@@ -13,41 +13,6 @@ variable "vpc_cidr_block" {
   description = "VPC CIDR block"
 }
 
-variable "namespace" {
-  type        = string
-  description = "Namespace (e.g. `eg` or `cp`)"
-  default     = ""
-}
-
-variable "stage" {
-  type        = string
-  description = "Stage (e.g. `prod`, `dev`, `staging`)"
-  default     = ""
-}
-
-variable "name" {
-  type        = string
-  description = "Name of the application"
-}
-
-variable "delimiter" {
-  type        = string
-  default     = "-"
-  description = "Delimiter between `namespace`, `stage`, `name` and `attributes`"
-}
-
-variable "attributes" {
-  type        = list(string)
-  description = "Additional attributes (_e.g._ \"1\")"
-  default     = []
-}
-
-variable "tags" {
-  type        = map(string)
-  description = "Additional tags (_e.g._ { BusinessUnit : ABC })"
-  default     = {}
-}
-
 variable "codepipeline_enabled" {
   type        = bool
   description = "A boolean to enable/disable AWS Codepipeline and ECR"
@@ -114,7 +79,7 @@ variable "launch_type" {
   default     = "FARGATE"
 }
 
-variable "environment" {
+variable "container_environment" {
   type = list(object({
     name  = string
     value = string
@@ -340,12 +305,6 @@ variable "codepipeline_github_webhooks_token" {
   type        = string
   description = "GitHub OAuth Token with permissions to create webhooks. If not provided, can be sourced from the `GITHUB_TOKEN` environment variable"
   default     = ""
-}
-
-variable "codepipeline_github_webhooks_anonymous" {
-  type        = bool
-  default     = false
-  description = "Github Anonymous API (if `true`, token must not be set as GITHUB_TOKEN or `github_webhooks_token`)"
 }
 
 variable "codepipeline_github_webhook_events" {

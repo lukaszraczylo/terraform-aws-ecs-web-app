@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/gruntwork-io/terratest/modules/terraform"
-	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"strconv"
 	"time"
+
+	"github.com/gruntwork-io/terratest/modules/terraform"
+	"github.com/stretchr/testify/assert"
 )
 
 // Test the Terraform module in examples/complete using Terratest.
@@ -29,7 +30,7 @@ func TestExamplesComplete(t *testing.T) {
 		Vars: map[string]interface{}{
 			"attributes": attributes,
 		},
-		Targets:  []string{"module.label", "module.vpc", "module.subnets", "module.alb"},
+		Targets: []string{"module.this", "module.vpc", "module.subnets", "module.alb"},
 	}
 
 	// At the end of the test, run `terraform destroy` to clean up any resources that were created
@@ -153,13 +154,13 @@ func TestExamplesComplete(t *testing.T) {
 	// Run `terraform output` to get the value of an output variable
 	ecsCloudwatchAutoscalingScaleDownPolicyArn := terraform.Output(t, terraformOptions, "ecs_cloudwatch_autoscaling_scale_down_policy_arn")
 	// Verify we're getting back the outputs we expect
-	expectedEcsCloudwatchAutoscalingScaleDownPolicyArn := "policyName/eg-test-ecs-web-app-" + attributes[0] + "-down"
+	expectedEcsCloudwatchAutoscalingScaleDownPolicyArn := "policyName/down"
 	assert.Contains(t, ecsCloudwatchAutoscalingScaleDownPolicyArn, expectedEcsCloudwatchAutoscalingScaleDownPolicyArn)
 
 	// Run `terraform output` to get the value of an output variable
 	ecsCloudwatchAutoscalingScaleUpPolicyArn := terraform.Output(t, terraformOptions, "ecs_cloudwatch_autoscaling_scale_up_policy_arn")
 	// Verify we're getting back the outputs we expect
-	expectedEcsCloudwatchAutoscalingScaleUpPolicyArn := "policyName/eg-test-ecs-web-app-" + attributes[0] + "-up"
+	expectedEcsCloudwatchAutoscalingScaleUpPolicyArn := "policyName/up"
 	assert.Contains(t, ecsCloudwatchAutoscalingScaleUpPolicyArn, expectedEcsCloudwatchAutoscalingScaleUpPolicyArn)
 
 	// Run `terraform output` to get the value of an output variable
@@ -212,7 +213,7 @@ func TestExamplesComplete(t *testing.T) {
 
 	// Run `terraform output` to get the value of an output variable
 	targetResponseTimeAverageCloudwatchMetricAlarmId := terraform.Output(t, terraformOptions, "target_response_time_average_cloudwatch_metric_alarm_id")
-	// Verify we're getting back the outputs we 
+	// Verify we're getting back the outputs we
 	expectedTargetResponseTimeAverageCloudwatchMetricAlarmId := "eg-test-ecs-web-app-" + attributes[0] + "-target-response-high"
 	assert.Equal(t, expectedTargetResponseTimeAverageCloudwatchMetricAlarmId, targetResponseTimeAverageCloudwatchMetricAlarmId)
 }
